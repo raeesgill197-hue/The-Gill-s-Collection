@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5e1a3b">
+<title>Bridal Rentals</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Mulish:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--w:#5e1a3b;--g:#b88a2e;--bg:#f8ecef;--t:#2a1520;--mu:#7d6670;--ok:#2f7d4f;--no:#c0392b;--wn:#c77c12;--ln:#ead3da}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--t);font:15px Mulish,sans-serif;padding-bottom:96px}
+h1,h2{font-family:'Cormorant Garamond',Georgia,serif;margin:0}
+header{background:var(--w);color:#fff;padding:calc(18px + env(safe-area-inset-top,0px)) 16px 16px}
+header h1{font-size:30px}header p{margin:0;color:#e3c27a;font-size:13px}
+main{padding:14px;max-width:640px;margin:auto}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font:700 22px 'Cormorant Garamond',serif;color:var(--w)}.stat span{font-size:11px;color:var(--mu)}
+input,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--ln);border-radius:10px;font:inherit;background:#fff;color:var(--t)}
+input:focus,textarea:focus{outline:none;border-color:var(--w)}
+input[readonly]{background:#f3e6ea;font-weight:700}
+label{display:block;font-size:12px;font-weight:700;color:var(--w);margin:12px 0 4px}
+.tabs{display:flex;gap:8px;margin:12px 0}
+.tabs button{flex:1;padding:9px;border:1.5px solid var(--w);border-radius:20px;background:#fff;color:var(--w);font:700 13px Mulish}
+.tabs button.on{background:var(--w);color:#fff}
+.card{background:#fff;border:1px solid var(--ln);border-left:5px solid var(--g);border-radius:12px;padding:12px;margin:10px 0}
+.card h2{font-size:22px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{font-size:11px;font-weight:700;color:#fff;padding:3px 10px;border-radius:12px;white-space:nowrap}
+.paid{background:var(--ok)}.part{background:var(--wn)}.unpaid{background:var(--no)}
+.mu{color:var(--mu);font-size:12px}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--g);color:#fff;border:0;border-radius:28px;padding:14px 22px;font:700 15px Mulish;box-shadow:0 3px 8px #0004}
+.btn{width:100%;padding:13px;border:0;border-radius:10px;background:var(--w);color:#fff;font:700 15px Mulish;margin-top:10px}
+.btn.alt{background:var(--ok)}.btn.del{background:#fff;color:var(--no);border:1.5px solid var(--no)}
+#form{position:fixed;inset:0;background:var(--bg);overflow:auto;display:none;z-index:5;padding-bottom:40px}
+#form.show{display:block}
+#back{background:none;border:0;color:#fff;font-size:26px}
+.pay{background:#fff;border:2px solid var(--g);border-radius:12px;padding:2px 12px 12px;margin-top:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style></head><body>
+<header><h1>Bridal Rentals</h1><p>Wedding gown rental records</p></header>
+<main>
+<div class="stats"><div class="stat"><b id="s1">0</b><span>Customers</span></div><div class="stat"><b id="s2">0</b><span>Not fully paid</span></div><div class="stat"><b id="s3">0</b><span>Amount to collect</span></div></div>
+<input id="q" placeholder="Search by name or phone" style="margin-top:12px">
+<div class="tabs"><button data-t="all" class="on">All</button><button data-t="paid">Paid</button><button data-t="due">Not paid</button></div>
+<div id="list"></div>
+<div class="card"><h2>Cloud backup</h2><label>Your server address</label><input id="srv" placeholder="https://your-server.com"><button class="btn" id="sync">Upload to cloud</button><p class="mu" id="msg"></p></div>
+</main>
+<button class="fab" id="add">+ New customer</button>
+
+<section id="form">
+<header><div class="row"><h1 id="ft">New customer</h1><button id="back">&times;</button></div></header>
+<main><input type="hidden" id="id">
+<label>Customer name</label><input id="name">
+<div class="g2"><div><label>Phone</label><input id="phone" type="tel"></div><div><label>Wedding date</label><input id="date" type="date"></div></div>
+<div id="items"></div>
+<div class="pay"><label>Total payment</label><input id="total" type="number" inputmode="decimal">
+<div class="g2"><div><label>Advance paid</label><input id="advance" type="number" inputmode="decimal"></div><div><label>Remaining</label><input id="rem" readonly></div></div>
+<p id="pst" style="margin:12px 0 0"></p></div>
+<button class="btn" id="save">Save customer</button>
+<button class="btn alt" id="full">Mark as fully paid</button>
+<button class="btn del" id="del">Delete customer</button>
+</main></section>
+
+<script>
+const $=s=>document.querySelector(s),K='gownCustomers',U='gownServer';
+const I=[['gown','Wedding gown'],['maid',"Bridesmaid's dress"],['bouquet','Floral bouquet'],['gloves','Pair of gloves'],['crown','Crown'],['palu','Palu']];
+const F=['name','phone','date','total','advance',...I.map(i=>i[0])];
+const L={paid:'Paid',part:'Partly paid',unpaid:'Not paid'};
+let db=[],tab='all';
+try{db=JSON.parse(localStorage.getItem(K)||'[]')}catch(e){}
+const save=()=>localStorage.setItem(K,JSON.stringify(db));
+const num=v=>parseFloat(v)||0;
+const rem=c=>Math.max(num(c.total)-num(c.advance),0);
+const st=c=>num(c.total)>0&&!rem(c)?'paid':num(c.advance)>0?'part':'unpaid';
+const esc=s=>String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+$('#items').innerHTML=I.map(([k,n])=>`<label>${n}: type / details</label><textarea id="${k}" rows="2" placeholder="Write the ${n.toLowerCase()} chosen"></textarea>`).join('');
+$('#srv').value=localStorage.getItem(U)||'';
+
+function render(){
+ const q=$('#q').value.toLowerCase(),live=db.filter(c=>!c.deleted),due=live.filter(c=>st(c)!=='paid');
+ $('#s1').textContent=live.length;$('#s2').textContent=due.length;
+ $('#s3').textContent=due.reduce((a,c)=>a+rem(c),0).toLocaleString();
+ const v=live.filter(c=>(tab==='all'||(tab==='paid')===(st(c)==='paid'))&&((c.name||'')+(c.phone||'')).toLowerCase().includes(q)).sort((a,b)=>b.updated-a.updated);
+ $('#list').innerHTML=v.length?v.map(c=>`<div class="card" data-id="${c.id}"><div class="row"><h2>${esc(c.name)}</h2><span class="badge ${st(c)}">${L[st(c)]}</span></div>
+ <div class="mu">${esc(c.phone)}${c.date?' &nbsp;|&nbsp; Wedding: '+c.date:''}</div>
+ <div class="row" style="margin-top:8px"><span>Total ${num(c.total)}</span><span>Advance ${num(c.advance)}</span><b style="color:var(--${rem(c)?'no':'ok'})">Left ${rem(c)}</b></div>
+ <div class="mu" style="margin-top:6px">Gown: ${esc(c.gown)||'-'}</div></div>`).join(''):'<p class="mu" style="text-align:center;margin:28px">No customers here yet. Tap "+ New customer" to add one.</p>';
+}
+function calc(){
+ $('#rem').value=Math.max(num($('#total').value)-num($('#advance').value),0);
+ const s=st({total:$('#total').value,advance:$('#advance').value});
+ $('#pst').innerHTML=`<span class="badge ${s}">${L[s]}</span>`;
+}
+function openForm(id){
+ const c=db.find(x=>x.id===id)||{};
+ $('#ft').textContent=id?'Edit customer':'New customer';$('#id').value=id||'';
+ F.forEach(k=>$('#'+k).value=c[k]||'');
+ $('#del').style.display=$('#full').style.display=id?'block':'none';
+ calc();$('#form').classList.add('show');$('#form').scrollTop=0;
+}
+const closeForm=()=>$('#form').classList.remove('show');
+$('#add').onclick=()=>openForm();$('#back').onclick=closeForm;
+$('#list').onclick=e=>{const c=e.target.closest('.card');if(c)openForm(c.dataset.id)};
+$('#q').oninput=render;
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));render()});
+$('#total').oninput=$('#advance').oninput=calc;
+$('#save').onclick=()=>{
+ if(!$('#name').value.trim())return alert('Please enter the customer name');
+ const id=$('#id').value||Date.now().toString(36),c={id,updated:Date.now()};
+ F.forEach(k=>c[k]=$('#'+k).value.trim());
+ db=db.filter(x=>x.id!==id);db.push(c);save();closeForm();render();sync(true);
+};
+$('#full').onclick=()=>{$('#advance').value=$('#total').value;$('#save').click()};
+$('#del').onclick=()=>{
+ if(!confirm('Delete this customer?'))return;
+ const id=$('#id').value;db=db.map(x=>x.id===id?{id,deleted:true,updated:Date.now()}:x);
+ save();closeForm();render();sync(true);
+};
+async function sync(quiet){
+ const u=$('#srv').value.trim().replace(/\/$/,'');localStorage.setItem(U,u);
+ if(!u){if(!quiet)$('#msg').textContent='Type your server address first.';return}
+ $('#msg').textContent='Uploading...';
+ try{
+  const r=await fetch(u+'/api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customers:db})});
+  db=(await r.json()).customers;save();render();
+  $('#msg').textContent='Backed up to cloud at '+new Date().toLocaleTimeString();
+ }catch(e){$('#msg').textContent='Saved on this phone. Cloud not reachable; it will upload on the next sync.'}
+}
+$('#sync').onclick=()=>sync();
+addEventListener('online',()=>sync(true));
+navigator.storage&&navigator.storage.persist&&navigator.storage.persist();
+render();
+</script></body></html>
